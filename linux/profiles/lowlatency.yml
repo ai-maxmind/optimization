@@ -1,0 +1,129 @@
+# Ubuntu Ultra Optimizer - Low Latency Profile
+# Optimized for latency-sensitive applications (trading, gaming, real-time)
+
+profile:
+  name: lowlatency
+  description: "Ultra-low latency configuration with microsecond-level optimizations"
+  
+safety:
+  max_risk_level: high
+  require_backup: true
+  dry_run_default: false
+  
+stages:
+  - kernel-vm
+  - kernel-sched
+  - kernel-io
+  - net
+  - fs
+  - services
+
+modules:
+  # Kernel VM
+  kernel.vm.swappiness:
+    enabled: true
+    override_value: 1
+    notes: "Minimal swappiness"
+    
+  kernel.vm.dirty-writeback:
+    enabled: true
+    notes: "Ultra-aggressive writeback (1 second)"
+    
+  kernel.vm.thp-hugepage:
+    enabled: true
+    override_value: "madvise"
+    notes: "THP with no defrag to avoid latency spikes"
+    
+  kernel.vm.overcommit:
+    enabled: true
+    notes: "Disable overcommit for predictability"
+    
+  # Kernel Scheduler
+  kernel.sched.cpu-governor:
+    enabled: true
+    override_value: "performance"
+    notes: "Force performance governor, disable turbo for consistency"
+    
+  kernel.sched.cpu-isolation:
+    enabled: true
+    notes: "Isolate CPUs for dedicated workload"
+    
+  kernel.sched.numa-balance:
+    enabled: false
+    notes: "Disable to reduce latency variance"
+    
+  # Kernel I/O
+  kernel.io.io-scheduler:
+    enabled: true
+    notes: "none/noop for minimal latency"
+    
+  kernel.io.read-ahead:
+    enabled: true
+    override_value: 128
+    notes: "Minimal read-ahead"
+    
+  # Network
+  net.core.tcp-buffers:
+    enabled: true
+    notes: "Smaller default buffers for lower latency"
+    
+  net.tcp.tcp-timewait:
+    enabled: true
+    notes: "Fast TIME_WAIT"
+    
+  net.tcp.tcp-backlog:
+    enabled: true
+    notes: "Large backlog"
+    
+  net.ethtool.ethtool-offload:
+    enabled: true
+    notes: "All offloads enabled"
+    
+  net.irq.irq-pinning:
+    enabled: true
+    notes: "Dedicated IRQ CPUs"
+    
+  # Filesystem
+  fs.mount.mount-noatime:
+    enabled: true
+    notes: "noatime and nodiratime"
+    
+  fs.mount.mount-journal:
+    enabled: true
+    notes: "data=writeback for ext4"
+    
+  fs.swap.swap-zram:
+    enabled: false
+    notes: "Disable swap entirely if possible"
+    
+  # Services
+  services.systemd.systemd-boot-fast:
+    enabled: true
+    notes: "Minimal services"
+    
+  services.journald.journald-tune:
+    enabled: true
+    notes: "Small journal, volatile storage"
+    
+  services.limits.limits-ulimit:
+    enabled: true
+    notes: "High limits"
+
+grub_params:
+  - "intel_idle.max_cstate=0"        # Disable C-states
+  - "processor.max_cstate=0"
+  - "idle=poll"                      # Poll instead of halt
+  - "nohz=off"                       # Disable tickless kernel
+  - "nosoftlockup"
+  - "nmi_watchdog=0"
+  - "rcu_nocbs=2-7"                  # Move RCU to specific CPUs
+  - "isolcpus=2-7"                   # Isolate CPUs
+  - "nohz_full=2-7"
+  - "rcu_nocb_poll"
+  - "tsc=reliable"
+  - "clocksource=tsc"
+  - "intel_pstate=disable"           # Disable P-state for consistent freq
+  - "transparent_hugepage=never"     # No THP compaction delays
+  - "skew_tick=1"
+  - "selinux=0"
+  - "audit=0"                        # Disable audit overhead

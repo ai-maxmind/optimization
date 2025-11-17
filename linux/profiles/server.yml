@@ -1,0 +1,129 @@
+# Ubuntu Ultra Optimizer - Server Profile
+# Optimized for server workloads (web, database, applications)
+
+profile:
+  name: server
+  description: "High-performance server configuration"
+  
+safety:
+  max_risk_level: medium
+  require_backup: true
+  dry_run_default: false
+  
+stages:
+  - kernel-vm
+  - kernel-sched
+  - kernel-io
+  - net
+  - fs
+  - services
+
+modules:
+  # Kernel VM
+  kernel.vm.swappiness:
+    enabled: true
+    notes: "Low swappiness for server performance"
+    
+  kernel.vm.dirty-writeback:
+    enabled: true
+    notes: "Aggressive writeback for SSDs"
+    
+  kernel.vm.thp-hugepage:
+    enabled: true
+    notes: "THP in madvise mode for compatibility"
+    
+  kernel.vm.overcommit:
+    enabled: true
+    notes: "Optimize memory overcommit"
+    
+  # Kernel Scheduler
+  kernel.sched.cpu-governor:
+    enabled: true
+    notes: "Performance governor for consistent CPU speed"
+    
+  kernel.sched.cpu-isolation:
+    enabled: false
+    notes: "Disable by default, enable for specific workloads"
+    
+  kernel.sched.numa-balance:
+    enabled: true
+    notes: "Enable if NUMA system detected"
+    
+  # Kernel I/O
+  kernel.io.io-scheduler:
+    enabled: true
+    notes: "Optimal scheduler per device type"
+    
+  kernel.io.read-ahead:
+    enabled: true
+    notes: "Tuned read-ahead based on workload"
+    
+  # Network
+  net.core.tcp-buffers:
+    enabled: true
+    notes: "Large TCP buffers for throughput"
+    
+  net.tcp.tcp-timewait:
+    enabled: true
+    notes: "Aggressive TIME_WAIT recycling"
+    
+  net.tcp.tcp-backlog:
+    enabled: true
+    notes: "Large connection backlog"
+    
+  net.ethtool.ethtool-offload:
+    enabled: true
+    notes: "Hardware offload features"
+    
+  net.irq.irq-pinning:
+    enabled: true
+    notes: "Pin network IRQs to specific CPUs"
+    
+  # Filesystem
+  fs.mount.mount-noatime:
+    enabled: true
+    notes: "noatime for all filesystems"
+    
+  fs.mount.mount-journal:
+    enabled: true
+    notes: "Optimize journal for ext4/XFS"
+    
+  fs.swap.swap-zram:
+    enabled: false
+    notes: "Disable for servers with plenty of RAM"
+    
+  # Services
+  services.systemd.systemd-boot-fast:
+    enabled: true
+    notes: "Disable unnecessary services"
+    
+  services.journald.journald-tune:
+    enabled: true
+    notes: "Limit journal size"
+    
+  services.limits.limits-ulimit:
+    enabled: true
+    notes: "Increase file descriptors and process limits"
+
+hardware_overrides:
+  # CPU-specific
+  intel:
+    kernel.sched.cpu-governor:
+      notes: "Intel P-State tuning"
+      
+  amd:
+    kernel.sched.cpu-governor:
+      notes: "AMD P-State tuning"
+      
+  # Storage-specific  
+  nvme:
+    kernel.io.io-scheduler:
+      scheduler: none
+      
+  ssd:
+    kernel.io.io-scheduler:
+      scheduler: none
+      
+  hdd:
+    kernel.io.io-scheduler:
+      scheduler: mq-deadline

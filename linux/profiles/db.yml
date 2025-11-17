@@ -1,0 +1,145 @@
+# Ubuntu Ultra Optimizer - Database Profile
+# Optimized for database workloads (PostgreSQL, MySQL, MongoDB, Redis)
+
+profile:
+  name: db
+  description: "Database-optimized configuration"
+  
+safety:
+  max_risk_level: medium
+  require_backup: true
+  dry_run_default: false
+  
+stages:
+  - kernel-vm
+  - kernel-sched
+  - kernel-io
+  - net
+  - fs
+  - services
+
+modules:
+  # Kernel VM
+  kernel.vm.swappiness:
+    enabled: true
+    override_value: 1
+    notes: "Very low swappiness for databases"
+    
+  kernel.vm.dirty-writeback:
+    enabled: true
+    notes: "Fast writeback for write-heavy workloads"
+    
+  kernel.vm.thp-hugepage:
+    enabled: true
+    override_value: "madvise"
+    notes: "Let database control THP usage"
+    
+  kernel.vm.overcommit:
+    enabled: true
+    notes: "Careful overcommit settings"
+    
+  # Kernel Scheduler  
+  kernel.sched.cpu-governor:
+    enabled: true
+    notes: "Performance governor"
+    
+  kernel.sched.cpu-isolation:
+    enabled: false
+    notes: "Usually not needed for databases"
+    
+  kernel.sched.numa-balance:
+    enabled: true
+    notes: "Important for multi-socket database servers"
+    
+  # Kernel I/O
+  kernel.io.io-scheduler:
+    enabled: true
+    notes: "Optimal scheduler, usually none/noop for SSDs"
+    
+  kernel.io.read-ahead:
+    enabled: true
+    override_value: 512
+    notes: "Larger read-ahead for sequential scans"
+    
+  # Network
+  net.core.tcp-buffers:
+    enabled: true
+    notes: "Large buffers for replication and backups"
+    
+  net.tcp.tcp-timewait:
+    enabled: true
+    notes: "Fast connection recycling"
+    
+  net.tcp.tcp-backlog:
+    enabled: true
+    notes: "Handle many concurrent connections"
+    
+  net.ethtool.ethtool-offload:
+    enabled: true
+    notes: "Hardware offload"
+    
+  net.irq.irq-pinning:
+    enabled: true
+    notes: "Pin network IRQs"
+    
+  # Filesystem
+  fs.mount.mount-noatime:
+    enabled: true
+    notes: "noatime is critical for database performance"
+    
+  fs.mount.mount-journal:
+    enabled: true
+    notes: "data=ordered for ext4 (safety vs performance)"
+    
+  fs.swap.swap-zram:
+    enabled: false
+    notes: "Disable for database servers"
+    
+  # Services
+  services.systemd.systemd-boot-fast:
+    enabled: true
+    notes: "Minimal services"
+    
+  services.journald.journald-tune:
+    enabled: true
+    notes: "Limit journal size"
+    
+  services.limits.limits-ulimit:
+    enabled: true
+    override_values:
+      nofile: 1048576
+      nproc: 1048576
+      memlock: unlimited
+    notes: "Very high limits for databases"
+
+database_specific:
+  postgresql:
+    shared_buffers: "25% of RAM"
+    effective_cache_size: "75% of RAM"
+    work_mem: "Calculate based on max_connections"
+    maintenance_work_mem: "2GB"
+    checkpoint_completion_target: 0.9
+    wal_buffers: "16MB"
+    default_statistics_target: 100
+    random_page_cost: 1.1  # for SSD
+    effective_io_concurrency: 200  # for SSD
+    
+  mysql:
+    innodb_buffer_pool_size: "70-80% of RAM"
+    innodb_log_file_size: "1GB+"
+    innodb_flush_method: "O_DIRECT"
+    innodb_flush_log_at_trx_commit: 2
+    query_cache_type: 0  # disable query cache
+    
+  mongodb:
+    wiredTiger.engineConfig.cacheSizeGB: "50% of RAM"
+    net.maxIncomingConnections: 65536
+    systemLog.verbosity: 0
+    
+  redis:
+    maxmemory-policy: "allkeys-lru"
+    save: ""  # disable RDB if using AOF
+    appendonly: "yes"
+    appendfsync: "everysec"
+    tcp-backlog: 65535
+    io-threads: 4

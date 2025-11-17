@@ -1,0 +1,191 @@
+# Ubuntu Ultra Optimizer - Desktop Profile
+# Target: Ubuntu Desktop, workstations, developer machines
+# Focus: Balance between performance and power efficiency
+
+profile:
+  name: desktop
+  description: "Desktop workstations and developer machines"
+  target_workload: "Interactive desktop, development, browsing, multimedia"
+  risk_level: low
+  
+system:
+  # Allow moderate swap for multitasking
+  vm:
+    swappiness: 10-30  # Based on RAM
+    dirty_ratio: 20
+    dirty_background_ratio: 10
+    dirty_writeback_centisecs: 1500  # 15s
+    vfs_cache_pressure: 150  # Favor page cache for applications
+    overcommit_memory: 0  # Heuristic
+    overcommit_ratio: 50
+    
+  # THP for applications
+  thp:
+    enabled: madvise
+    defrag: madvise
+    
+  # Memory compaction
+  compact:
+    compact_unevictable_allowed: 1
+    extfrag_threshold: 500
+    
+  # CPU settings
+  cpu:
+    governor: schedutil  # Balance performance and power
+    turbo_boost: enabled
+    numa_balancing: auto  # Enable if multi-socket
+    
+  # I/O settings
+  io:
+    scheduler: auto  # mq-deadline for HDD, none for SSD/NVMe
+    read_ahead_kb: 256  # Moderate
+    nr_requests: 256
+    write_cache: yes  # Enable for responsiveness
+    
+  # Network settings
+  network:
+    tcp_rmem: "4096 87380 16777216"  # 4K min, 85K default, 16M max
+    tcp_wmem: "4096 65536 16777216"
+    tcp_congestion_control: bbr
+    tcp_fastopen: 3
+    somaxconn: 4096
+    netdev_max_backlog: 5000
+    tcp_max_syn_backlog: 4096
+    tcp_fin_timeout: 30
+    tcp_tw_reuse: 1
+    tcp_max_tw_buckets: 500000
+    
+    # RPS/RFS for multi-core
+    rps_enabled: yes
+    rps_flow_entries: 16384
+    
+    # Hardware offload
+    offload:
+      tso: on
+      gso: on
+      gro: on
+      lro: off
+      
+  # Filesystem settings
+  fs:
+    mount_options:
+      noatime: yes
+      relatime: no
+    
+    journal:
+      commit_interval: 15  # 15 seconds for SSD
+      
+    inotify:
+      max_user_watches: 1048576  # 1M for IDEs
+      max_user_instances: 1024
+      max_queued_events: 32768
+      
+    # ZRAM swap
+    zram:
+      enabled: auto  # Enable if RAM <= 8GB
+      size_percent: 50  # 50% of RAM
+      algorithm: lz4
+      
+  # Services settings
+  services:
+    systemd:
+      timeout_start: 30
+      timeout_stop: 30
+      timeout_device: 30
+      
+    journald:
+      max_use: 500M
+      max_file_size: 50M
+      max_retention: 1week
+      
+    limits:
+      nofile: 524288
+      nproc: 32768
+      memlock: unlimited
+      
+  # Desktop-specific
+  desktop:
+    # GNOME optimizations
+    gnome:
+      animations: fast  # 0.5x speed
+      extensions_minimal: yes
+      
+    # Laptop power management
+    laptop:
+      tlp_enabled: auto  # Enable if battery detected
+      cpu_scaling_ac: performance
+      cpu_scaling_bat: powersave
+      wifi_power_save_bat: on
+      
+# Module selection
+modules:
+  enabled:
+    # Kernel VM
+    - kernel.vm.swappiness
+    - kernel.vm.dirty-writeback
+    - kernel.vm.thp-hugepage
+    - kernel.vm.overcommit
+    - kernel.vm.cache-pressure
+    - kernel.vm.compact
+    
+    # Kernel Scheduler
+    - kernel.sched.governor
+    
+    # Kernel I/O
+    - kernel.io.scheduler
+    - kernel.io.read-ahead
+    - kernel.io.nr-requests
+    
+    # Network
+    - net.core-buffers
+    - net.tcp-timewait
+    - net.tcp-backlog
+    - net.rps-rfs
+    - net.ethtool-offload
+    
+    # Filesystem
+    - fs.mount-noatime
+    - fs.inotify-limits
+    - fs.swap-zram  # Conditional
+    
+    # Services
+    - services.systemd-boot-fast
+    - services.journald-tune
+    - services.limits-ulimit
+    
+    # Desktop
+    - desktop.gnome-animation
+    - desktop.laptop-power  # Conditional
+    
+  disabled:
+    # Not needed for desktop
+    - kernel.sched.numa-balance  # Unless multi-socket
+    - kernel.sched.cpu-isolation  # Not for desktop
+    - kernel.vm.zone-reclaim  # Single socket usually
+    - net.irq-pinning  # Overkill for desktop
+    - kernel.io.write-cache  # Auto-handled
+    - fs.mount-journal  # Default is fine
+    - security.kernel-hardening  # Optional
+    
+# Performance expectations
+expected_gains:
+  boot_time: "10-20% faster"
+  application_launch: "15-25% faster"
+  responsiveness: "Noticeably snappier UI"
+  multitasking: "Better with many applications"
+  power_consumption: "Similar or slightly lower"
+  
+# Notes
+notes:
+  - "Designed for Ubuntu Desktop 22.04+ with GNOME"
+  - "Works well for development workloads (IDEs, containers)"
+  - "ZRAM enabled automatically for systems with <= 8GB RAM"
+  - "TLP enabled automatically for laptops"
+  - "Safe to run on desktop systems"
+  - "Can revert all changes with rollback"
+  
+# Warnings
+warnings:
+  - "Not optimized for servers or database workloads"
+  - "GNOME optimizations only apply to GNOME desktop"
+  - "Laptop optimizations require TLP package"
